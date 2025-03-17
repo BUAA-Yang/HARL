@@ -274,31 +274,32 @@ class SimpleEnv(AECEnv):
         agent_x = [agent.state.p_pos[0] for agent in self.world.agents]
         agent_y = [agent.state.p_pos[1] for agent in self.world.agents]
         agent_z = [agent.state.p_pos[2] if len(agent.state.p_pos) > 2 else 0 for agent in self.world.agents]
-
+        agent_color=[agent.color for agent in self.world.agents]
         # 提取所有landmark的位置
         landmark_x = [landmark.state.p_pos[0] for landmark in self.world.landmarks]
         landmark_y = [landmark.state.p_pos[1] for landmark in self.world.landmarks]
         landmark_z = [landmark.state.p_pos[2] if len(landmark.state.p_pos) > 2 else 0 for landmark in self.world.landmarks]
+        landmark_color=[landmark.color for landmark in self.world.landmarks]
         # 假设 agent_x, agent_y 是代理坐标的列表
-        for x, y in zip(agent_x, agent_y):
+        for i, (x, y) in enumerate(zip(agent_x, agent_y)):
             ax1.add_patch(
-                patches.Circle(
-                    (x, y),
-                    self.world.agents[0].size,
-                    fill=True,
-                    color="blue",
-                )
+            patches.Circle(
+                (x, y),
+                self.world.agents[i].size,
+                fill=True,
+                color=agent_color[i],
+            )
             )
 
         # 同理，假设 landmark_x, landmark_y 是地标坐标的列表
-        for x, y in zip(landmark_x, landmark_y):
+        for i, (x, y) in enumerate(zip(landmark_x, landmark_y)):
             ax1.add_patch(
-                patches.Circle(
-                    (x, y),
-                    self.unwrapped.world.landmarks[0].size,
-                    fill=True,
-                    color="green",
-                )
+            patches.Circle(
+                (x, y),
+                self.world.landmarks[i].size,
+                fill=True,
+                color=landmark_color[i],
+            )
             )
         #  绘制agents为蓝色球体
         ax2.scatter(agent_x, agent_y, agent_z, c='blue', s=50, label='Agents')
