@@ -51,10 +51,7 @@ class SimpleEnv(AECEnv):
         fig, self.ax1 = plt.subplots(figsize=(8,8))
         fig2 = plt.figure()
         self.ax2 = fig2.add_subplot(111, projection='3d')
-        self.viewer = None
-        self.width = 700
-        self.height = 700
-        self.max_size = 1
+
 
 
         # Set up the drawing window
@@ -315,5 +312,5 @@ class SimpleEnv(AECEnv):
         ax2.set_box_aspect([1, 1, 1])
 
 
-        plt.pause(0.01)
+        plt.pause(0.0001)
 
