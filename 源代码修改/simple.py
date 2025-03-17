@@ -56,7 +56,17 @@ from .._mpe_utils.simple_env import SimpleEnv, make_env
 
 
 class raw_env(SimpleEnv):
-    def __init__(self, max_cycles=25, continuous_actions=False, render_mode=None):
+    def __init__(self,local_ratio=0.5, max_cycles=25, continuous_actions=False, render_mode=None):
+        EzPickle.__init__(
+            self,
+            local_ratio,
+            max_cycles,
+            continuous_actions,
+            render_mode,
+        )
+        assert (
+            0.0 <= local_ratio <= 1.0
+        ), "local_ratio is a proportion. Must be between 0 and 1."
         scenario = Scenario()
         world = scenario.make_world()
         super().__init__(
@@ -65,6 +75,7 @@ class raw_env(SimpleEnv):
             render_mode=render_mode,
             max_cycles=max_cycles,
             continuous_actions=continuous_actions,
+            local_ratio=local_ratio,
         )
         self.metadata["name"] = "simple_v2"
 
@@ -76,12 +87,17 @@ parallel_env = parallel_wrapper_fn(env)
 class Scenario(BaseScenario):
     def make_world(self):
         world = World()
+        world.dim_c = 10
+        world.dim_p = 3
+        num_agents = 4
+        world.collaborative = True
         # add agents
-        world.agents = [Agent() for i in range(4)]
+        world.agents = [Agent() for i in range(num_agents)]
         for i, agent in enumerate(world.agents):
             agent.name = f"agent_{i}"
-            agent.collide = False
+            agent.collide = True
             agent.silent = False
+            agent.size =2
         # add landmarks
         world.landmarks = [Landmark() for i in range(len(world.agents))]
         for i, landmark in enumerate(world.landmarks):
@@ -127,19 +143,67 @@ class Scenario(BaseScenario):
             # Place the obstacle at the center (0, 0, 0)
             obstacle.state.p_pos = np.array([0, 0, 0])
             # Place the obstacle randomly within a spherical shell of radius 10 to 20
-            obstacle.state.r = np_random.uniform(10, 20)
-            
+            obstacle.size = np_random.uniform(10, 20)
+    def is_collision(self, entity1, entity2, is_obstacle=False):
+        if is_obstacle:
+            # Calculate horizontal Euclidean distance (ignoring z-coordinate)
+            delta_pos = entity1.state.p_pos[:2] - entity2.state.p_pos[:2]
+        else:
+            # Calculate full 3D Euclidean distance
+            delta_pos = entity1.state.p_pos - entity2.state.p_pos
+        dist = np.sqrt(np.sum(np.square(delta_pos)))
+        dist_min = entity1.size + entity2.size
+        return True if dist < dist_min else False
+
     def reward(self, agent, world):
-        # Find the corresponding landmark for the agent
+        rew = 0
+        for a in world.agents:
+            if a is not agent and self.is_collision(a, agent):
+                rew -= 10
+        for obstacle in world.obstacles:
+            if self.is_collision(obstacle, agent, is_obstacle=True):
+                rew -= 5
+        
+        return rew
+    def global_reward(self, world):
+        dist=0
+        for agent in world.agents:
+            # Find the corresponding landmark for the agent
+            agent_index = int(agent.name.split('_')[1])
+            target_landmark = world.landmarks[agent_index]
+            # Calculate the squared distance to the corresponding landmark
+            dist-= np.sum(np.square(agent.state.p_pos - target_landmark.state.p_pos))
+        return dist
+    def observation(self, agent, world):
+        # Get positions of the nearest agent and obstacle relative to this agent
+        nearest_agent = None
+        nearest_obstacle = None
+        min_agent_dist = float('inf')
+        min_obstacle_dist = float('inf')
+
+        for other_agent in world.agents:
+            if other_agent is not agent:
+                dist = np.linalg.norm(other_agent.state.p_pos - agent.state.p_pos)
+                if dist < min_agent_dist:
+                    min_agent_dist = dist
+                    nearest_agent = other_agent
+        for obstacle in world.obstacles:
+            # Calculate horizontal Euclidean distance (ignoring z-coordinate)
+            dist = np.linalg.norm(obstacle.state.p_pos[:2] - agent.state.p_pos[:2])
+            if dist < min_obstacle_dist:
+                min_obstacle_dist = dist
+                nearest_obstacle = obstacle
+
+        # Relative positions of the nearest agent and obstacle
+        nearest_agent_pos = (
+            nearest_agent.state.p_pos - agent.state.p_pos if nearest_agent else np.zeros(world.dim_p)
+        )
+        nearest_obstacle_pos = (
+            np.concatenate([nearest_obstacle.state.p_pos[:2] - agent.state.p_pos[:2], [nearest_obstacle.size]]) 
+            if nearest_obstacle else np.zeros(world.dim_p)
+        )
+        # Relative position of the target landmark
         agent_index = int(agent.name.split('_')[1])
         target_landmark = world.landmarks[agent_index]
-        # Calculate the squared distance to the corresponding landmark
-        dist2 = np.sum(np.square(agent.state.p_pos - target_landmark.state.p_pos))
-        return -dist2
-
-    def observation(self, agent, world):
-        # get positions of all entities in this agent's reference frame
-        entity_pos = []
-        for entity in world.landmarks:
-            entity_pos.append(entity.state.p_pos - agent.state.p_pos)
-        return np.concatenate([agent.state.p_vel] + entity_pos)
+        target_landmark_pos = target_landmark.state.p_pos - agent.state.p_pos
+        return np.concatenate([agent.state.p_vel,target_landmark_pos, nearest_agent_pos, nearest_obstacle_pos])
