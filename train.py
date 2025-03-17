@@ -43,7 +43,7 @@ def main():
         help="Environment name. Choose from: smac, mamujoco, pettingzoo_mpe, gym, football, dexhands, smacv2, lag.",
     )
     parser.add_argument(
-        "--exp_name", type=str, default="spread-10-3d", help="Experiment name."
+        "--exp_name", type=str, default="spread-3-3d", help="Experiment name."
     )
     parser.add_argument(
         "--load_config",

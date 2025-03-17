@@ -43,7 +43,7 @@ def main():
         help="Environment name. Choose from: smac, mamujoco, pettingzoo_mpe, gym, football, dexhands, smacv2, lag.",
     )
     parser.add_argument(
-        "--exp_name", type=str, default="spread-10-3d", help="Experiment name."
+        "--exp_name", type=str, default="spread-3-3d", help="Experiment name."
     )
     parser.add_argument(
         "--load_config",
@@ -72,7 +72,7 @@ def main():
         env_args = all_config["env_args"]
     else:  # load config from corresponding yaml file
         algo_args, env_args = get_defaults_yaml_args(args["algo"], args["env"])
-    algo_args['train']['model_dir'] = f"results\pettingzoo_mpe\simple_spread_v2-continuous\happo\installtest\seed-00001-2025-03-17-08-56-56\models"
+    algo_args['train']['model_dir'] = f"results\pettingzoo_mpe\simple_spread_v2-continuous\happo\spread-3-3d\seed-00001-2025-03-17-11-50-42\models"
     update_args(unparsed_dict, algo_args, env_args)  # update args from command line
 
     if args["env"] == "dexhands":

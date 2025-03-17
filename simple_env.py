@@ -10,6 +10,7 @@ from pettingzoo import AECEnv
 from pettingzoo.mpe._mpe_utils.core import Agent
 from pettingzoo.utils import wrappers
 from pettingzoo.utils.agent_selector import agent_selector
+from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -47,7 +48,9 @@ class SimpleEnv(AECEnv):
         super().__init__()
 
         self.render_mode = render_mode
-        fig, self.ax = plt.subplots(figsize=(16,16))
+        fig, self.ax1 = plt.subplots(figsize=(8,8))
+        fig2 = plt.figure()
+        self.ax2 = fig2.add_subplot(111, projection='3d')
         self.viewer = None
         self.width = 700
         self.height = 700
@@ -263,37 +266,53 @@ class SimpleEnv(AECEnv):
 
 
     def render(self):
-        ax=self.ax
-        ax.cla()
-        for agent in self.world.agents:
-            if agent.movable:
-                ax.add_patch(
-                    patches.Circle(
-                        (agent.state.p_pos[0], agent.state.p_pos[1]),
-                        0.05,
-                        fill=True,
-                        color="blue",
-                    )
-                )
-            else:
-                ax.add_patch(
-                    patches.Circle(
-                        (agent.state.p_pos[0], agent.state.p_pos[1]),
-                        0.05,
-                        fill=True,
-                        color="red",
-                    )
-                )
-        for landmark in self.world.landmarks:
-            ax.add_patch(
+        ax1=self.ax1
+        ax2=self.ax2
+        ax1.cla()
+        ax2.cla()
+         # 提取所有agent的位置
+        agent_x = [agent.state.p_pos[0] for agent in self.world.agents]
+        agent_y = [agent.state.p_pos[1] for agent in self.world.agents]
+        agent_z = [agent.state.p_pos[2] if len(agent.state.p_pos) > 2 else 0 for agent in self.world.agents]
+
+        # 提取所有landmark的位置
+        landmark_x = [landmark.state.p_pos[0] for landmark in self.world.landmarks]
+        landmark_y = [landmark.state.p_pos[1] for landmark in self.world.landmarks]
+        landmark_z = [landmark.state.p_pos[2] if len(landmark.state.p_pos) > 2 else 0 for landmark in self.world.landmarks]
+        # 假设 agent_x, agent_y 是代理坐标的列表
+        for x, y in zip(agent_x, agent_y):
+            ax1.add_patch(
                 patches.Circle(
-                    (landmark.state.p_pos[0], landmark.state.p_pos[1]),
-                    0.05,
+                    (x, y),
+                    self.world.agents[0].size,
+                    fill=True,
+                    color="blue",
+                )
+            )
+
+        # 同理，假设 landmark_x, landmark_y 是地标坐标的列表
+        for x, y in zip(landmark_x, landmark_y):
+            ax1.add_patch(
+                patches.Circle(
+                    (x, y),
+                    self.unwrapped.world.landmarks[0].size,
                     fill=True,
                     color="green",
                 )
             )
-        plt.xlim(-1, 1)
-        plt.ylim(-1, 1)
+        #  绘制agents为蓝色球体
+        ax2.scatter(agent_x, agent_y, agent_z, c='blue', s=50, label='Agents')
+
+        # 绘制landmarks为绿色球体
+        ax2.scatter(landmark_x, landmark_y, landmark_z, c='green', s=50, label='Landmarks')
+        ax1.set_xlim(-1, 1)
+        ax1.set_ylim(-1, 1)
+        ax1.set_aspect("equal")
+        ax2.set_xlim(-1, 1)
+        ax2.set_ylim(-1, 1)
+        ax2.set_zlim(-1, 1)
+        ax2.set_box_aspect([1, 1, 1])
+
+
         plt.pause(0.01)
 
