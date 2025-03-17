@@ -43,7 +43,7 @@ def main():
         help="Environment name. Choose from: smac, mamujoco, pettingzoo_mpe, gym, football, dexhands, smacv2, lag.",
     )
     parser.add_argument(
-        "--exp_name", type=str, default="simple_reference_v2", help="Experiment name."
+        "--exp_name", type=str, default="simple_v2", help="Experiment name."
     )
     parser.add_argument(
         "--load_config",
@@ -72,7 +72,7 @@ def main():
         env_args = all_config["env_args"]
     else:  # load config from corresponding yaml file
         algo_args, env_args = get_defaults_yaml_args(args["algo"], args["env"])
-    algo_args['train']['model_dir'] = f"results\pettingzoo_mpe\simple_reference_v2-continuous\happo\simple_reference_v2\seed-00001-2025-03-17-16-08-26\models"
+    algo_args['train']['model_dir'] = f"results\pettingzoo_mpe\simple_v2-continuous\happo\simple_v2\seed-00001-2025-03-17-21-43-09\models"
     algo_args['render']['use_render']=True
     algo_args['train']['eval_interval']=1
     update_args(unparsed_dict, algo_args, env_args)  # update args from command line
