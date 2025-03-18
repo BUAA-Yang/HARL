@@ -162,23 +162,24 @@ class Scenario(BaseScenario):
         rew = 0
         for a in world.agents:
             if a is not agent and self.is_collision(a, agent):
-                print(f"Collision detected between {agent.name} and {a.name}")
                 rew -= 10
         for obstacle in world.obstacles:
             if self.is_collision(obstacle, agent, is_obstacle=True):
-                print(f"Collision detected between {agent.name} and {obstacle.name}")
                 rew -= 5
         # Reward based on the distance to the target landmark
         distance_to_goal = np.linalg.norm(agent.state.p_pos - agent.goal.state.p_pos)
-        if distance_to_goal < agent.goal.size:
-            rew += 20
+        if distance_to_goal < 0.2:
+            print(f"{agent.name} reached the goal!")
+            rew += 1
+        print(f"Agent: {agent.name}, Reward: {rew}")
         return rew
     def global_reward(self, world):
         dist=0
         for agent in world.agents:
             # Calculate the squared distance to the agent's goal (target landmark)
-            dist -= np.sum(np.square(agent.state.p_pos - agent.goal.state.p_pos))
+            dist -= np.linalg.norm(agent.state.p_pos - agent.goal.state.p_pos)
         avg_dist = dist / len(world.agents)
+        print(f"Average distance to goal: {avg_dist}")
         return avg_dist
     def observation(self, agent, world):
         # Get positions of the nearest agent and obstacle relative to this agent
