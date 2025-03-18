@@ -93,17 +93,19 @@ class Scenario(BaseScenario):
         world.collaborative = True
         # add agents
         world.agents = [Agent() for i in range(num_agents)]
+        # add landmarks
+        world.landmarks = [Landmark() for i in range(num_agents)]
+        for i, landmark in enumerate(world.landmarks):
+            landmark.name = "landmark %d" % i
+            landmark.collide = False
+            landmark.movable = False
+            landmark.size=0.05
         for i, agent in enumerate(world.agents):
             agent.name = f"agent_{i}"
             agent.collide = True
             agent.silent = False
             agent.size =0.1
-        # add landmarks
-        world.landmarks = [Landmark() for i in range(len(world.agents))]
-        for i, landmark in enumerate(world.landmarks):
-            landmark.name = "landmark %d" % i
-            landmark.collide = False
-            landmark.movable = False
+            agent.goal=world.landmarks[i]
         # add obstacles
         world.obstacles = [Landmark() for i in range(1)]
         for i, obstacle in enumerate(world.obstacles):
@@ -160,20 +162,22 @@ class Scenario(BaseScenario):
         rew = 0
         for a in world.agents:
             if a is not agent and self.is_collision(a, agent):
+                print(f"Collision detected between {agent.name} and {a.name}")
                 rew -= 10
         for obstacle in world.obstacles:
             if self.is_collision(obstacle, agent, is_obstacle=True):
+                print(f"Collision detected between {agent.name} and {obstacle.name}")
                 rew -= 5
-        
+        # Reward based on the distance to the target landmark
+        distance_to_goal = np.linalg.norm(agent.state.p_pos - agent.goal.state.p_pos)
+        if distance_to_goal < agent.goal.size:
+            rew += 20
         return rew
     def global_reward(self, world):
         dist=0
         for agent in world.agents:
-            # Find the corresponding landmark for the agent
-            agent_index = int(agent.name.split('_')[1])
-            target_landmark = world.landmarks[agent_index]
-            # Calculate the squared distance to the corresponding landmark
-            dist-= np.sum(np.square(agent.state.p_pos - target_landmark.state.p_pos))
+            # Calculate the squared distance to the agent's goal (target landmark)
+            dist -= np.sum(np.square(agent.state.p_pos - agent.goal.state.p_pos))
         avg_dist = dist / len(world.agents)
         return avg_dist
     def observation(self, agent, world):
@@ -205,9 +209,7 @@ class Scenario(BaseScenario):
             if nearest_obstacle else np.zeros(world.dim_p)
         )
         # Relative position of the target landmark
-        agent_index = int(agent.name.split('_')[1])
-        target_landmark = world.landmarks[agent_index]
-        target_landmark_pos = target_landmark.state.p_pos - agent.state.p_pos
+        target_landmark_pos = agent.goal.state.p_pos - agent.state.p_pos
         # communication of nearest_agent
         comm = nearest_agent.state.c
         return np.concatenate([agent.state.p_vel,target_landmark_pos, nearest_agent_pos, nearest_obstacle_pos, comm])
