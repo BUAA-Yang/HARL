@@ -49,13 +49,13 @@ simple_v2.env(max_cycles=25, continuous_actions=False)
 import numpy as np
 
 from pettingzoo.utils.conversions import parallel_wrapper_fn
-
+from gymnasium.utils import EzPickle
 from .._mpe_utils.core import Agent, Landmark, World
 from .._mpe_utils.scenario import BaseScenario
 from .._mpe_utils.simple_env import SimpleEnv, make_env
 
 
-class raw_env(SimpleEnv):
+class raw_env(SimpleEnv, EzPickle):
     def __init__(self,local_ratio=0.5, max_cycles=25, continuous_actions=False, render_mode=None):
         EzPickle.__init__(
             self,
@@ -97,7 +97,7 @@ class Scenario(BaseScenario):
             agent.name = f"agent_{i}"
             agent.collide = True
             agent.silent = False
-            agent.size =2
+            agent.size =0.1
         # add landmarks
         world.landmarks = [Landmark() for i in range(len(world.agents))]
         for i, landmark in enumerate(world.landmarks):
@@ -110,6 +110,7 @@ class Scenario(BaseScenario):
             obstacle.name = "obstacle %d" % i
             obstacle.collide = True
             obstacle.movable = False
+            obstacle.color = np.array([0.5, 0.5, 0.5])  # Set obstacle color to gray
         return world
 
     def reset_world(self, world, np_random):
@@ -120,13 +121,13 @@ class Scenario(BaseScenario):
         # random properties for landmarks
         for i, landmark in enumerate(world.landmarks):
             # Set landmark colors with a corresponding gradient
-            landmark.color = np.array([0.75, 0.25 + 0.15 * i, 0.25])
+            landmark.color = np.array([0.25 + 0.15 * i, 0.25, 0.25])
         
         # set random initial states
         for i, agent in enumerate(world.agents):
             # Generate random spherical coordinates
-            z = np_random.uniform(-60, 60)  # height restriction
-            r = np.sqrt(100**2 - z**2)  # radius at this height
+            z = np_random.uniform(-0.3, 0.3)  # height restriction
+            r = np.sqrt(1 - z**2)  # radius at this height
             phi = np_random.uniform(0, 2 * np.pi)  # azimuthal angle
             x = r * np.cos(phi)
             y = r * np.sin(phi)
@@ -143,7 +144,7 @@ class Scenario(BaseScenario):
             # Place the obstacle at the center (0, 0, 0)
             obstacle.state.p_pos = np.array([0, 0, 0])
             # Place the obstacle randomly within a spherical shell of radius 10 to 20
-            obstacle.size = np_random.uniform(10, 20)
+            obstacle.size = np_random.uniform(0.2, 0.4)
     def is_collision(self, entity1, entity2, is_obstacle=False):
         if is_obstacle:
             # Calculate horizontal Euclidean distance (ignoring z-coordinate)
@@ -173,7 +174,8 @@ class Scenario(BaseScenario):
             target_landmark = world.landmarks[agent_index]
             # Calculate the squared distance to the corresponding landmark
             dist-= np.sum(np.square(agent.state.p_pos - target_landmark.state.p_pos))
-        return dist
+        avg_dist = dist / len(world.agents)
+        return avg_dist
     def observation(self, agent, world):
         # Get positions of the nearest agent and obstacle relative to this agent
         nearest_agent = None

@@ -298,6 +298,25 @@ class SimpleEnv(AECEnv):
                 color=landmark_color[i],
             )
             )
+        # 提取所有obstacle的位置
+        obstacle_x = [obstacle.state.p_pos[0] for obstacle in self.world.obstacles]
+        obstacle_y = [obstacle.state.p_pos[1] for obstacle in self.world.obstacles]
+        obstacle_z = [obstacle.state.p_pos[2] if len(obstacle.state.p_pos) > 2 else 0 for obstacle in self.world.obstacles]
+        obstacle_color = [obstacle.color for obstacle in self.world.obstacles]
+
+        # 绘制障碍物为红色球体
+        for i, (x, y) in enumerate(zip(obstacle_x, obstacle_y)):
+            ax1.add_patch(
+            patches.Circle(
+                (x, y),
+                self.world.obstacles[i].size,
+                fill=True,
+                color=obstacle_color[i],
+            )
+            )
+
+        # 绘制障碍物为红色球体
+        ax2.scatter(obstacle_x, obstacle_y, obstacle_z, c='red', s=50, label='Obstacles')
         #  绘制agents为蓝色球体
         ax2.scatter(agent_x, agent_y, agent_z, c='blue', s=50, label='Agents')
 
