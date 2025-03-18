@@ -207,9 +207,5 @@ class Scenario(BaseScenario):
         target_landmark = world.landmarks[agent_index]
         target_landmark_pos = target_landmark.state.p_pos - agent.state.p_pos
         # communication of nearest_agent
-        comm = []
-        for other in world.agents:
-            if other is agent:
-                continue
-            comm.append(other.state.c)
-        return np.concatenate([agent.state.p_vel,target_landmark_pos, nearest_agent_pos, nearest_obstacle_pos])
+        comm = nearest_agent.state.c
+        return np.concatenate([agent.state.p_vel,target_landmark_pos, nearest_agent_pos, nearest_obstacle_pos, comm])
