@@ -72,8 +72,8 @@ def main():
         env_args = all_config["env_args"]
     else:  # load config from corresponding yaml file
         algo_args, env_args = get_defaults_yaml_args(args["algo"], args["env"])
-    algo_args['train']['model_dir'] = f"results\pettingzoo_mpe\simple_v2-continuous\happo\第一阶段\seed-00001-2025-03-18-16-39-52\models"
-    algo_args['train']['num_env_steps']=20000000
+    algo_args['train']['model_dir'] = f"results\pettingzoo_mpe\simple_v2-continuous\happo\第一阶段\seed-00001-2025-03-18-20-42-23\models"
+    algo_args['train']['num_env_steps']=80000000
     update_args(unparsed_dict, algo_args, env_args)  # update args from command line
 
     if args["env"] == "dexhands":

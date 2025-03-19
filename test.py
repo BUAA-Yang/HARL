@@ -73,7 +73,7 @@ def main():
     else:  # load config from corresponding yaml file
         algo_args, env_args = get_defaults_yaml_args(args["algo"], args["env"])
     algo_args['train']['model_dir'
-                       ] = f"results\pettingzoo_mpe\simple_v2-continuous\happo\第一阶段\seed-00001-2025-03-18-11-21-36\models"
+                       ] = f"results\pettingzoo_mpe\simple_v2-continuous\happo\第一阶段\seed-00001-2025-03-18-22-25-47\models"
     algo_args['render']['use_render']=True
     algo_args['train']['eval_interval']=1
     update_args(unparsed_dict, algo_args, env_args)  # update args from command line
