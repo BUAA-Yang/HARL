@@ -49,14 +49,24 @@ simple_v2.env(max_cycles=25, continuous_actions=False)
 import numpy as np
 
 from pettingzoo.utils.conversions import parallel_wrapper_fn
-
+from gymnasium.utils import EzPickle
 from .._mpe_utils.core import Agent, Landmark, World
 from .._mpe_utils.scenario import BaseScenario
 from .._mpe_utils.simple_env import SimpleEnv, make_env
 
 
-class raw_env(SimpleEnv):
-    def __init__(self, max_cycles=25, continuous_actions=False, render_mode=None):
+class raw_env(SimpleEnv, EzPickle):
+    def __init__(self,local_ratio=0.5, max_cycles=25, continuous_actions=False, render_mode=None):
+        EzPickle.__init__(
+            self,
+            local_ratio,
+            max_cycles,
+            continuous_actions,
+            render_mode,
+        )
+        assert (
+            0.0 <= local_ratio <= 1.0
+        ), "local_ratio is a proportion. Must be between 0 and 1."
         scenario = Scenario()
         world = scenario.make_world()
         super().__init__(
@@ -65,6 +75,7 @@ class raw_env(SimpleEnv):
             render_mode=render_mode,
             max_cycles=max_cycles,
             continuous_actions=continuous_actions,
+            local_ratio=local_ratio,
         )
         self.metadata["name"] = "simple_v2"
 
@@ -76,44 +87,130 @@ parallel_env = parallel_wrapper_fn(env)
 class Scenario(BaseScenario):
     def make_world(self):
         world = World()
+        world.dim_c = 10
+        world.dim_p = 3
+        num_agents = 4
+        world.collaborative = True
         # add agents
-        world.agents = [Agent() for i in range(1)]
-        for i, agent in enumerate(world.agents):
-            agent.name = f"agent_{i}"
-            agent.collide = False
-            agent.silent = True
+        world.agents = [Agent() for i in range(num_agents)]
         # add landmarks
-        world.landmarks = [Landmark() for i in range(1)]
+        world.landmarks = [Landmark() for i in range(num_agents)]
         for i, landmark in enumerate(world.landmarks):
             landmark.name = "landmark %d" % i
             landmark.collide = False
             landmark.movable = False
+            landmark.size=0.05
+        for i, agent in enumerate(world.agents):
+            agent.name = f"agent_{i}"
+            agent.collide = True
+            agent.silent = False
+            agent.size =0.1
+            agent.goal=world.landmarks[i]
+        # add obstacles
+        world.obstacles = [Landmark() for i in range(1)]
+        for i, obstacle in enumerate(world.obstacles):
+            obstacle.name = "obstacle %d" % i
+            obstacle.collide = True
+            obstacle.movable = False
+            obstacle.color = np.array([0.5, 0.5, 0.5])  # Set obstacle color to gray
         return world
 
     def reset_world(self, world, np_random):
         # random properties for agents
         for i, agent in enumerate(world.agents):
-            agent.color = np.array([0.25, 0.25, 0.25])
+            # Set agent colors with a gradient
+            agent.color = np.array([0.25 + 0.15 * i, 0.25, 0.25])
         # random properties for landmarks
         for i, landmark in enumerate(world.landmarks):
-            landmark.color = np.array([0.75, 0.75, 0.75])
-        world.landmarks[0].color = np.array([0.75, 0.25, 0.25])
+            # Set landmark colors with a corresponding gradient
+            landmark.color = np.array([0.25 + 0.15 * i, 0.25, 0.25])
+        
         # set random initial states
-        for agent in world.agents:
-            agent.state.p_pos = np_random.uniform(-1, +1, world.dim_p)
+        for i, agent in enumerate(world.agents):
+            # Generate random spherical coordinates
+            z = np_random.uniform(-0.3, 0.3)  # height restriction
+            r = np.sqrt(1 - z**2)  # radius at this height
+            phi = np_random.uniform(0, 2 * np.pi)  # azimuthal angle
+            x = r * np.cos(phi)
+            y = r * np.sin(phi)
+            agent.state.p_pos = np.array([x, y, z])
             agent.state.p_vel = np.zeros(world.dim_p)
             agent.state.c = np.zeros(world.dim_c)
+        
         for i, landmark in enumerate(world.landmarks):
-            landmark.state.p_pos = np_random.uniform(-1, +1, world.dim_p)
+            # Place the landmark on the opposite side of the agent
+            agent_pos = world.agents[i].state.p_pos
+            landmark.state.p_pos = -agent_pos  # Opposite position
             landmark.state.p_vel = np.zeros(world.dim_p)
+        for i, obstacle in enumerate(world.obstacles):
+            # Place the obstacle at the center (0, 0, 0)
+            obstacle.state.p_pos = np.array([0, 0, 0])
+            # Place the obstacle randomly within a spherical shell of radius 10 to 20
+            obstacle.size = np_random.uniform(0.2, 0.4)
+    def is_collision(self, entity1, entity2, is_obstacle=False):
+        if is_obstacle:
+            # Calculate horizontal Euclidean distance (ignoring z-coordinate)
+            delta_pos = entity1.state.p_pos[:2] - entity2.state.p_pos[:2]
+        else:
+            # Calculate full 3D Euclidean distance
+            delta_pos = entity1.state.p_pos - entity2.state.p_pos
+        dist = np.sqrt(np.sum(np.square(delta_pos)))
+        dist_min = entity1.size + entity2.size
+        return True if dist < dist_min else False
 
     def reward(self, agent, world):
-        dist2 = np.sum(np.square(agent.state.p_pos - world.landmarks[0].state.p_pos))
-        return -dist2
-
+        rew = 0
+        for a in world.agents:
+            if a is not agent and self.is_collision(a, agent):
+                rew -= 10
+        for obstacle in world.obstacles:
+            if self.is_collision(obstacle, agent, is_obstacle=True):
+                rew -= 5
+        # Reward based on the distance to the target landmark
+        distance_to_goal = np.linalg.norm(agent.state.p_pos - agent.goal.state.p_pos)
+        if distance_to_goal < 0.2:
+            print(f"{agent.name} reached the goal!")
+            rew += 1
+        print(f"Agent: {agent.name}, Reward: {rew}")
+        return rew
+    def global_reward(self, world):
+        dist=0
+        for agent in world.agents:
+            # Calculate the squared distance to the agent's goal (target landmark)
+            dist -= np.linalg.norm(agent.state.p_pos - agent.goal.state.p_pos)
+        avg_dist = dist / len(world.agents)
+        print(f"Average distance to goal: {avg_dist}")
+        return avg_dist
     def observation(self, agent, world):
-        # get positions of all entities in this agent's reference frame
-        entity_pos = []
-        for entity in world.landmarks:
-            entity_pos.append(entity.state.p_pos - agent.state.p_pos)
-        return np.concatenate([agent.state.p_vel] + entity_pos)
+        # Get positions of the nearest agent and obstacle relative to this agent
+        nearest_agent = None
+        nearest_obstacle = None
+        min_agent_dist = float('inf')
+        min_obstacle_dist = float('inf')
+
+        for other_agent in world.agents:
+            if other_agent is not agent:
+                dist = np.linalg.norm(other_agent.state.p_pos - agent.state.p_pos)
+                if dist < min_agent_dist:
+                    min_agent_dist = dist
+                    nearest_agent = other_agent
+        for obstacle in world.obstacles:
+            # Calculate horizontal Euclidean distance (ignoring z-coordinate)
+            dist = np.linalg.norm(obstacle.state.p_pos[:2] - agent.state.p_pos[:2])
+            if dist < min_obstacle_dist:
+                min_obstacle_dist = dist
+                nearest_obstacle = obstacle
+
+        # Relative positions of the nearest agent and obstacle
+        nearest_agent_pos = (
+            nearest_agent.state.p_pos - agent.state.p_pos if nearest_agent else np.zeros(world.dim_p)
+        )
+        nearest_obstacle_pos = (
+            np.concatenate([nearest_obstacle.state.p_pos[:2] - agent.state.p_pos[:2], [nearest_obstacle.size]]) 
+            if nearest_obstacle else np.zeros(world.dim_p)
+        )
+        # Relative position of the target landmark
+        target_landmark_pos = agent.goal.state.p_pos - agent.state.p_pos
+        # communication of nearest_agent
+        comm = nearest_agent.state.c
+        return np.concatenate([agent.state.p_vel,target_landmark_pos, nearest_agent_pos, nearest_obstacle_pos, comm])

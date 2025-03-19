@@ -10,7 +10,9 @@ from pettingzoo import AECEnv
 from pettingzoo.mpe._mpe_utils.core import Agent
 from pettingzoo.utils import wrappers
 from pettingzoo.utils.agent_selector import agent_selector
-
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 
@@ -46,15 +48,11 @@ class SimpleEnv(AECEnv):
         super().__init__()
 
         self.render_mode = render_mode
-        pygame.init()
-        self.viewer = None
-        self.width = 700
-        self.height = 700
-        self.screen = pygame.Surface([self.width, self.height])
-        self.max_size = 1
-        self.game_font = pygame.freetype.Font(
-            os.path.join(os.path.dirname(__file__), "secrcode.ttf"), 24
-        )
+        fig, self.ax1 = plt.subplots(figsize=(8,8))
+        fig2 = plt.figure()
+        self.ax2 = fig2.add_subplot(111, projection='3d')
+
+
 
         # Set up the drawing window
 
@@ -260,87 +258,78 @@ class SimpleEnv(AECEnv):
         self._accumulate_rewards()
 
         if self.render_mode == "human":
+
             self.render()
 
-    def enable_render(self, mode="human"):
-        if not self.renderOn and mode == "human":
-            self.screen = pygame.display.set_mode(self.screen.get_size())
-            self.renderOn = True
 
     def render(self):
-        if self.render_mode is None:
-            gymnasium.logger.warn(
-                "You are calling render method without specifying any render mode."
+        ax1=self.ax1
+        ax2=self.ax2
+        ax1.cla()
+        ax2.cla()
+         # 提取所有agent的位置
+        agent_x = [agent.state.p_pos[0] for agent in self.world.agents]
+        agent_y = [agent.state.p_pos[1] for agent in self.world.agents]
+        agent_z = [agent.state.p_pos[2] if len(agent.state.p_pos) > 2 else 0 for agent in self.world.agents]
+        agent_color=[agent.color for agent in self.world.agents]
+        # 提取所有landmark的位置
+        landmark_x = [landmark.state.p_pos[0] for landmark in self.world.landmarks]
+        landmark_y = [landmark.state.p_pos[1] for landmark in self.world.landmarks]
+        landmark_z = [landmark.state.p_pos[2] if len(landmark.state.p_pos) > 2 else 0 for landmark in self.world.landmarks]
+        landmark_color=[landmark.color for landmark in self.world.landmarks]
+        # 假设 agent_x, agent_y 是代理坐标的列表
+        for i, (x, y) in enumerate(zip(agent_x, agent_y)):
+            ax1.add_patch(
+            patches.Circle(
+                (x, y),
+                self.world.agents[i].size,
+                fill=True,
+                color=agent_color[i],
             )
-            return
+            )
 
-        self.enable_render(self.render_mode)
+        # 同理，假设 landmark_x, landmark_y 是地标坐标的列表
+        for i, (x, y) in enumerate(zip(landmark_x, landmark_y)):
+            ax1.add_patch(
+            patches.Circle(
+                (x, y),
+                self.world.landmarks[i].size,
+                fill=True,
+                color=landmark_color[i],
+            )
+            )
+        # 提取所有obstacle的位置
+        obstacle_x = [obstacle.state.p_pos[0] for obstacle in self.world.obstacles]
+        obstacle_y = [obstacle.state.p_pos[1] for obstacle in self.world.obstacles]
+        obstacle_z = [obstacle.state.p_pos[2] if len(obstacle.state.p_pos) > 2 else 0 for obstacle in self.world.obstacles]
+        obstacle_color = [obstacle.color for obstacle in self.world.obstacles]
 
-        observation = np.array(pygame.surfarray.pixels3d(self.screen))
-        if self.render_mode == "human":
-            self.draw()
-            pygame.display.flip()
-        return (
-            np.transpose(observation, axes=(1, 0, 2))
-            if self.render_mode == "rgb_array"
-            else None
-        )
+        # 绘制障碍物为红色球体
+        for i, (x, y) in enumerate(zip(obstacle_x, obstacle_y)):
+            ax1.add_patch(
+            patches.Circle(
+                (x, y),
+                self.world.obstacles[i].size,
+                fill=True,
+                color=obstacle_color[i],
+            )
+            )
 
-    def draw(self):
-        # clear screen
-        self.screen.fill((255, 255, 255))
+        # 绘制障碍物为红色球体
+        ax2.scatter(obstacle_x, obstacle_y, obstacle_z, c='red', s=50, label='Obstacles')
+        #  绘制agents为蓝色球体
+        ax2.scatter(agent_x, agent_y, agent_z, c='blue', s=50, label='Agents')
 
-        # update bounds to center around agent
-        all_poses = [entity.state.p_pos for entity in self.world.entities]
-        cam_range = np.max(np.abs(np.array(all_poses)))
+        # 绘制landmarks为绿色球体
+        ax2.scatter(landmark_x, landmark_y, landmark_z, c='green', s=50, label='Landmarks')
+        ax1.set_xlim(-1, 1)
+        ax1.set_ylim(-1, 1)
+        ax1.set_aspect("equal")
+        ax2.set_xlim(-1, 1)
+        ax2.set_ylim(-1, 1)
+        ax2.set_zlim(-1, 1)
+        ax2.set_box_aspect([1, 1, 1])
 
-        # update geometry and text positions
-        text_line = 0
-        for e, entity in enumerate(self.world.entities):
-            # geometry
-            x, y = entity.state.p_pos
-            y *= (
-                -1
-            )  # this makes the display mimic the old pyglet setup (ie. flips image)
-            x = (
-                (x / cam_range) * self.width // 2 * 0.9
-            )  # the .9 is just to keep entities from appearing "too" out-of-bounds
-            y = (y / cam_range) * self.height // 2 * 0.9
-            x += self.width // 2
-            y += self.height // 2
-            pygame.draw.circle(
-                self.screen, entity.color * 200, (x, y), entity.size * 350
-            )  # 350 is an arbitrary scale factor to get pygame to render similar sizes as pyglet
-            pygame.draw.circle(
-                self.screen, (0, 0, 0), (x, y), entity.size * 350, 1
-            )  # borders
-            assert (
-                0 < x < self.width and 0 < y < self.height
-            ), f"Coordinates {(x, y)} are out of bounds."
 
-            # text
-            if isinstance(entity, Agent):
-                if entity.silent:
-                    continue
-                if np.all(entity.state.c == 0):
-                    word = "_"
-                elif self.continuous_actions:
-                    word = (
-                        "[" + ",".join([f"{comm:.2f}" for comm in entity.state.c]) + "]"
-                    )
-                else:
-                    word = alphabet[np.argmax(entity.state.c)]
+        plt.pause(0.0001)
 
-                message = entity.name + " sends " + word + "   "
-                message_x_pos = self.width * 0.05
-                message_y_pos = self.height * 0.95 - (self.height * 0.05 * text_line)
-                self.game_font.render_to(
-                    self.screen, (message_x_pos, message_y_pos), message, (0, 0, 0)
-                )
-                text_line += 1
-
-    def close(self):
-        if self.renderOn:
-            pygame.event.pump()
-            pygame.display.quit()
-            self.renderOn = False
