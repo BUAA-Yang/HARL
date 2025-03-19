@@ -169,9 +169,7 @@ class Scenario(BaseScenario):
         # Reward based on the distance to the target landmark
         distance_to_goal = np.linalg.norm(agent.state.p_pos - agent.goal.state.p_pos)
         if distance_to_goal < 0.2:
-            print(f"{agent.name} reached the goal!")
             rew += 1
-        print(f"Agent: {agent.name}, Reward: {rew}")
         return rew
     def global_reward(self, world):
         dist=0
@@ -179,7 +177,6 @@ class Scenario(BaseScenario):
             # Calculate the squared distance to the agent's goal (target landmark)
             dist -= np.linalg.norm(agent.state.p_pos - agent.goal.state.p_pos)
         avg_dist = dist / len(world.agents)
-        print(f"Average distance to goal: {avg_dist}")
         return avg_dist
     def observation(self, agent, world):
         # Get positions of the nearest agent and obstacle relative to this agent

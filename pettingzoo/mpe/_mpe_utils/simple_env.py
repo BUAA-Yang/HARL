@@ -81,7 +81,10 @@ class SimpleEnv(AECEnv):
         state_dim = 0
         for agent in self.world.agents:
             if agent.movable:
-                space_dim = self.world.dim_p * 2 + 1
+                if self.continuous_actions:
+                    space_dim = self.world.dim_p
+                else:
+                    space_dim = self.world.dim_p * 2 + 1
             elif self.continuous_actions:
                 space_dim = 0
             else:
@@ -96,7 +99,7 @@ class SimpleEnv(AECEnv):
             state_dim += obs_dim
             if self.continuous_actions:
                 self.action_spaces[agent.name] = spaces.Box(
-                    low=0, high=1, shape=(space_dim,)
+                    low=-agent.u_range, high=agent.u_range, shape=(space_dim,)
                 )
             else:
                 self.action_spaces[agent.name] = spaces.Discrete(space_dim)
@@ -166,6 +169,7 @@ class SimpleEnv(AECEnv):
             if agent.movable:
                 mdim = self.world.dim_p * 2 + 1
                 if self.continuous_actions:
+                    mdim=self.world.dim_p
                     scenario_action.append(action[0:mdim])
                     action = action[mdim:]
                 else:
@@ -203,8 +207,7 @@ class SimpleEnv(AECEnv):
             agent.action.u = np.zeros(self.world.dim_p)
             if self.continuous_actions:
                 # Process continuous action as in OpenAI MPE
-                agent.action.u[0] += action[0][1] - action[0][2]
-                agent.action.u[1] += action[0][3] - action[0][4]
+                agent.action.u = action[0]
             else:
                 # process discrete action
                 if action[0] == 1:
