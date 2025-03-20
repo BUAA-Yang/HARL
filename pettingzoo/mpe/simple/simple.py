@@ -162,13 +162,13 @@ class Scenario(BaseScenario):
         rew = 0
         for a in world.agents:
             if a is not agent and self.is_collision(a, agent):
-                rew -= 10
+                rew -= 15
         for obstacle in world.obstacles:
             if self.is_collision(obstacle, agent, is_obstacle=True):
-                rew -= 5
+                rew -= 10
         # Reward based on the distance to the target landmark
         distance_to_goal = np.linalg.norm(agent.state.p_pos - agent.goal.state.p_pos)
-        if distance_to_goal < 0.2:
+        if distance_to_goal < agent.size:
             rew += 1
         return rew
     def global_reward(self, world):
