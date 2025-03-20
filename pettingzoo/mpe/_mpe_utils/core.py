@@ -9,6 +9,7 @@ class EntityState:  # physical/external base state of all entities
         self.p_vel = None
 
 
+
 class AgentState(
     EntityState
 ):  # state of agents (including communication and internal/mental state)
@@ -57,7 +58,9 @@ class Landmark(Entity):  # properties of landmark entities
     def __init__(self):
         super().__init__()
 
-
+class Obstacles(Entity):  # properties of oobstacles entities
+    def __init__(self):
+        super().__init__()
 class Agent(Entity):  # properties of agent entities
     def __init__(self):
         super().__init__()
@@ -86,6 +89,7 @@ class World:  # multi-agent world
         # list of agents and entities (can change at execution-time!)
         self.agents = []
         self.landmarks = []
+        self.obstacles = []
         # communication channel dimensionality
         self.dim_c = 0
         # position dimensionality
@@ -95,15 +99,15 @@ class World:  # multi-agent world
         # simulation timestep
         self.dt = 0.1
         # physical damping
-        self.damping = 0.25
+        self.damping = 0.1
         # contact response parameters
-        self.contact_force = 1e2
-        self.contact_margin = 1e-3
+        self.contact_force = 1e3
+        self.contact_margin = 1e-2
 
     # return all entities in the world
     @property
     def entities(self):
-        return self.agents + self.landmarks
+        return self.agents + self.obstacles
 
     # return all agents controllable by external policies
     @property
@@ -124,6 +128,7 @@ class World:  # multi-agent world
         p_force = [None] * len(self.entities)
         # apply agent physical controls
         p_force = self.apply_action_force(p_force)
+        p_force = self.apply_environment_force(p_force)
         # apply environment forces
         # integrate physical state
         self.integrate_state(p_force)
@@ -131,17 +136,16 @@ class World:  # multi-agent world
         for agent in self.agents:
             self.update_agent_state(agent)
 
-    # gather agent action forces
+    # 给无人机增加风力
     def apply_action_force(self, p_force):
         # set applied forces
         for i, agent in enumerate(self.agents):
-            if agent.movable:
-                noise = (
-                    np.random.randn(*agent.action.u.shape) * agent.u_noise
-                    if agent.u_noise
-                    else 0.0
-                )
-                p_force[i] = agent.action.u + noise
+            noise = (
+                np.random.randn(*agent.action.u.shape) * agent.u_noise
+                if agent.u_noise
+                else 0.0
+            )
+            p_force[i] =noise
         return p_force
 
     # gather physical forces acting on entities
@@ -161,7 +165,7 @@ class World:  # multi-agent world
                         p_force[b] = 0.0
                     p_force[b] = f_b + p_force[b]
         return p_force
-
+                                                                                   #p_force为神经网络输出的三个可控变量
     # integrate physical state
     def integrate_state(self, p_force):
         for i, entity in enumerate(self.entities):
@@ -169,6 +173,12 @@ class World:  # multi-agent world
                 continue
             entity.state.p_vel = entity.state.p_vel * (1 - self.damping)
             if p_force[i] is not None:
+                angular_velocity,horizontal_acceleration,vertical_acceleration = self.agents[i].action.u  #角速度,水平加速度，垂直加速度
+                entity.state.p_vel_horizontal+=horizontal_acceleration* self.dt
+                entity.state.omega+=angular_velocity* self.dt
+                entity.state.p_vel[0]=entity.state.p_vel_horizontal*np.cos(entity.state.omega)
+                entity.state.p_vel[1]=entity.state.p_vel_horizontal*np.sin(entity.state.omega)
+                entity.state.p_vel[2]+=vertical_acceleration* self.dt
                 entity.state.p_vel += (p_force[i] / entity.mass) * self.dt
             if entity.max_speed is not None:
                 speed = np.sqrt(
@@ -205,13 +215,19 @@ class World:  # multi-agent world
             return [None, None]  # don't collide against itself
         # compute actual distance between entities
         delta_pos = entity_a.state.p_pos - entity_b.state.p_pos
-        dist = np.sqrt(np.sum(np.square(delta_pos)))
         # minimum allowable distance
-        dist_min = entity_a.size + entity_b.size
+        dist_min = entity_a.size + entity_b.size                                    #仿真时可以手动调整
         # softmax penetration
         k = self.contact_margin
-        penetration = np.logaddexp(0, -(dist - dist_min) / k) * k
-        force = self.contact_force * delta_pos / dist * penetration
+        if entity_a.name.split('_')[0]=='obstacle' or entity_b.name.split('_')[0]=='obstacle':
+            dist = np.sqrt(np.sum(np.square(delta_pos[:2])))
+            penetration = np.logaddexp(0, -(dist - dist_min) / k) * k
+            force = self.contact_force * delta_pos[:2] / dist * penetration
+            force.apend(0)
+        else:
+            dist = np.sqrt(np.sum(np.square(delta_pos)))
+            penetration = np.logaddexp(0, -(dist - dist_min) / k) * k
+            force = self.contact_force * delta_pos / dist * penetration
         force_a = +force if entity_a.movable else None
         force_b = -force if entity_b.movable else None
         return [force_a, force_b]

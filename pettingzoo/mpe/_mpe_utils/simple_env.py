@@ -199,37 +199,16 @@ class SimpleEnv(AECEnv):
 
     # set env action for a particular agent
     def _set_action(self, action, agent, action_space, time=None):
-        agent.action.u = np.zeros(self.world.dim_p)
-        agent.action.c = np.zeros(self.world.dim_c)
+        agent.action.u = action[0]
 
-        if agent.movable:
-            # physical action
-            agent.action.u = np.zeros(self.world.dim_p)
-            if self.continuous_actions:
-                # Process continuous action as in OpenAI MPE
-                agent.action.u = action[0]
-            else:
-                # process discrete action
-                if action[0] == 1:
-                    agent.action.u[0] = -1.0
-                if action[0] == 2:
-                    agent.action.u[0] = +1.0
-                if action[0] == 3:
-                    agent.action.u[1] = -1.0
-                if action[0] == 4:
-                    agent.action.u[1] = +1.0
-            sensitivity = 5.0
-            if agent.accel is not None:
-                sensitivity = agent.accel
-            agent.action.u *= sensitivity
-            action = action[1:]
+        sensitivity = 5.0
+        if agent.accel is not None:
+            sensitivity = agent.accel
+        agent.action.u *= sensitivity
+        action = action[1:]
         if not agent.silent:
-            # communication action
-            if self.continuous_actions:
-                agent.action.c = action[0]
-            else:
-                agent.action.c = np.zeros(self.world.dim_c)
-                agent.action.c[action[0]] = 1.0
+            agent.action.c = action[0]
+
             action = action[1:]
         # make sure we used all elements of action
         assert len(action) == 0

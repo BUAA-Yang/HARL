@@ -50,7 +50,7 @@ import numpy as np
 
 from pettingzoo.utils.conversions import parallel_wrapper_fn
 from gymnasium.utils import EzPickle
-from .._mpe_utils.core import Agent, Landmark, World
+from .._mpe_utils.core import Agent, Landmark, Obstacles,World
 from .._mpe_utils.scenario import BaseScenario
 from .._mpe_utils.simple_env import SimpleEnv, make_env
 
@@ -89,7 +89,7 @@ class Scenario(BaseScenario):
         world = World()
         world.dim_c = 10
         world.dim_p = 3
-        num_agents = 4
+        num_agents = 2
         world.collaborative = True
         # add agents
         world.agents = [Agent() for i in range(num_agents)]
@@ -107,7 +107,7 @@ class Scenario(BaseScenario):
             agent.size =0.1
             agent.goal=world.landmarks[i]
         # add obstacles
-        world.obstacles = [Landmark() for i in range(1)]
+        world.obstacles = [Obstacles() for i in range(1)]
         for i, obstacle in enumerate(world.obstacles):
             obstacle.name = "obstacle %d" % i
             obstacle.collide = True
@@ -134,8 +134,10 @@ class Scenario(BaseScenario):
             x = r * np.cos(phi)
             y = r * np.sin(phi)
             agent.state.p_pos = np.array([x, y, z])
-            agent.state.p_vel = np.zeros(world.dim_p)
+            agent.state.p_vel = np.zeros(world.dim_p)                                        
+            agent.state.p_vel_horizontal = np.zeros(1)                                     #初始化水平速度为0
             agent.state.c = np.zeros(world.dim_c)
+            agent.state.omega  = np_random.uniform(0, 2 * np.pi)                     #随机初始化航向角
         
         for i, landmark in enumerate(world.landmarks):
             # Place the landmark on the opposite side of the agent
