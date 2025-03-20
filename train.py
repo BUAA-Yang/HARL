@@ -43,7 +43,7 @@ def main():
         help="Environment name. Choose from: smac, mamujoco, pettingzoo_mpe, gym, football, dexhands, smacv2, lag.",
     )
     parser.add_argument(
-        "--exp_name", type=str, default="调试", help="Experiment name."
+        "--exp_name", type=str, default="修改激活函数", help="Experiment name."
     )
     parser.add_argument(
         "--load_config",
