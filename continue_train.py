@@ -72,7 +72,7 @@ def main():
         env_args = all_config["env_args"]
     else:  # load config from corresponding yaml file
         algo_args, env_args = get_defaults_yaml_args(args["algo"], args["env"])
-    algo_args['train']['model_dir'] = f"results\pettingzoo_mpe\simple_v2-continuous\happo\调试\seed-00001-2025-03-19-19-14-36\models"
+    algo_args['train']['model_dir'] = f"results\pettingzoo_mpe\simple_v2-continuous\happo\调试\seed-00001-2025-03-20-09-12-34\models"
     algo_args['train']['num_env_steps']=80000000
     update_args(unparsed_dict, algo_args, env_args)  # update args from command line
 
