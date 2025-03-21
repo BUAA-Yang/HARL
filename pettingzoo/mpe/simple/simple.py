@@ -137,6 +137,7 @@ class Scenario(BaseScenario):
             agent.state.p_vel = np.zeros(world.dim_p)                                        
             agent.state.p_vel_horizontal = np.zeros(1)                                     #初始化水平速度为0
             agent.state.c = np.zeros(world.dim_c)
+            agent.state.angular_velocity=np.zeros(1) 
             agent.state.omega  = np_random.uniform(0, 2 * np.pi)                     #随机初始化航向角
         
         for i, landmark in enumerate(world.landmarks):
@@ -238,4 +239,4 @@ class Scenario(BaseScenario):
         target_landmark_pos = self.compute_relative_bearing_and_distance(agent.state.p_pos, agent.goal.state.p_pos, agent.state.omega)
         # communication of nearest_agent
         comm = nearest_agent.state.c
-        return np.concatenate([agent.state.p_vel,target_landmark_pos, nearest_agent_pos, nearest_obstacle_pos, comm])
+        return np.concatenate([agent.state.p_vel_horizontal,[agent.state.p_vel[2]],target_landmark_pos, nearest_agent_pos, nearest_obstacle_pos, comm])

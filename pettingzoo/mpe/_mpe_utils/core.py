@@ -174,6 +174,7 @@ class World:  # multi-agent world
             entity.state.p_vel = entity.state.p_vel * (1 - self.damping)
             if p_force[i] is not None:
                 angular_velocity,horizontal_acceleration,vertical_acceleration = self.agents[i].action.u  #角速度,水平加速度，垂直加速度
+                entity.state.angular_velocity=angular_velocity
                 entity.state.p_vel_horizontal+=horizontal_acceleration* self.dt
                 entity.state.omega+=angular_velocity* self.dt
                 entity.state.p_vel[0]=entity.state.p_vel_horizontal*np.cos(entity.state.omega)
