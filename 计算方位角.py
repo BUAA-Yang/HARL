@@ -36,7 +36,7 @@ target_pos = [10.0, 10.0, 5.0] # 目标位置 (x, y, z)
 omega = np.pi*(1+2/3)         # 智能体朝向 45 度，转换为弧度
 
 bearing, h_dist, v_dist = compute_relative_bearing_and_distance(agent_pos, target_pos, omega)
-
+print(compute_relative_bearing_and_distance(agent_pos, target_pos, omega))
 print(f"相对方位角 (弧度): {bearing:.3f}")
 print(f"相对方位角 (角度): {np.degrees(bearing):.2f}°")
 print(f"水平距离: {h_dist:.3f}")
