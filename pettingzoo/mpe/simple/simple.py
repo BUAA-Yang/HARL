@@ -159,33 +159,33 @@ class Scenario(BaseScenario):
         dist = np.sqrt(np.sum(np.square(delta_pos)))
         dist_min = entity1.size + entity2.size
         return True if dist < dist_min else False
-    def compute_relative_bearing_and_distance(agent_pos, target_pos, omega):
-            """
-            计算目标相对智能体的水平方位角、水平距离和垂直距离
+    def compute_relative_bearing_and_distance(self,agent_pos, target_pos, omega):
+        """
+        计算目标相对智能体的水平方位角、水平距离和垂直距离
 
-            参数:
-            - agent_pos: 智能体的位置 [x, y, z]
-            - target_pos: 目标的位置 [x, y, z]
-            - omega: 智能体的水平朝向角 (弧度)
+        参数:
+        - agent_pos: 智能体的位置 [x, y, z]
+        - target_pos: 目标的位置 [x, y, z]
+        - omega: 智能体的水平朝向角 (弧度)
 
-            返回:
-            - relative_bearing: 目标相对于智能体的水平方位角 [-pi, pi] (弧度)
-            - horizontal_distance: xy 平面上的水平距离
-            - vertical_distance: z 方向的垂直距离
-            """
-            # 计算相对位置向量
-            delta_pos = np.array(target_pos) - np.array(agent_pos)
-            # 水平距离（忽略 z）
-            horizontal_distance = np.linalg.norm(delta_pos[:2])  # sqrt(dx^2 + dy^2)
-            # 垂直距离（z轴方向）
-            vertical_distance = delta_pos[2]
-            # 计算绝对水平方向（xy平面上的方位角）[-pi, pi]
-            absolute_bearing = np.arctan2(delta_pos[1], delta_pos[0])
-            # 计算相对方位角（目标相对 agent 当前朝向 omega 的水平角度） ∈ [-pi, pi]
-            relative_bearing = absolute_bearing - omega
-            # 规范化到 [-pi, pi]，保持一致性
-            relative_bearing = (relative_bearing + np.pi) % (2 * np.pi) - np.pi
-            return relative_bearing, horizontal_distance, vertical_distance
+        返回:
+        - relative_bearing: 目标相对于智能体的水平方位角 [-pi, pi] (弧度)
+        - horizontal_distance: xy 平面上的水平距离
+        - vertical_distance: z 方向的垂直距离
+        """
+        # 计算相对位置向量
+        delta_pos = np.array(target_pos) - np.array(agent_pos)
+        # 水平距离（忽略 z）
+        horizontal_distance = np.linalg.norm(delta_pos[:2])  # sqrt(dx^2 + dy^2)
+        # 垂直距离（z轴方向）
+        vertical_distance = delta_pos[2]
+        # 计算绝对水平方向（xy平面上的方位角）[-pi, pi]
+        absolute_bearing = np.arctan2(delta_pos[1], delta_pos[0])
+        # 计算相对方位角（目标相对 agent 当前朝向 omega 的水平角度） ∈ [-pi, pi]
+        relative_bearing = absolute_bearing - omega
+        # 规范化到 [-pi, pi]，保持一致性
+        relative_bearing = (relative_bearing + np.pi) % (2 * np.pi) - np.pi
+        return relative_bearing, horizontal_distance, vertical_distance
 
     def reward(self, agent, world):
         rew = 0
@@ -226,13 +226,12 @@ class Scenario(BaseScenario):
             if dist < min_obstacle_dist:
                 min_obstacle_dist = dist
                 nearest_obstacle = obstacle
-
         # Relative positions of the nearest agent and obstacle
         nearest_agent_pos = (
             self.compute_relative_bearing_and_distance(agent.state.p_pos, nearest_agent.state.p_pos, agent.state.omega) if nearest_agent else np.zeros(world.dim_p)
         )
         nearest_obstacle_pos = (
-            np.concatenate([nearest_obstacle.state.p_pos[:2] - agent.state.p_pos[:2], [nearest_obstacle.size]]) 
+            np.concatenate([self.compute_relative_bearing_and_distance(agent.state.p_pos, nearest_obstacle.state.p_pos, agent.state.omega)[:2], [nearest_obstacle.size]]) 
             if nearest_obstacle else np.zeros(world.dim_p)
         )
         # Relative position of the target landmark
