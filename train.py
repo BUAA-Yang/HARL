@@ -43,7 +43,7 @@ def main():
         help="Environment name. Choose from: smac, mamujoco, pettingzoo_mpe, gym, football, dexhands, smacv2, lag.",
     )
     parser.add_argument(
-        "--exp_name", type=str, default="改变动作变量", help="Experiment name."
+        "--exp_name", type=str, default="观测变量修改", help="Experiment name."
     )
     parser.add_argument(
         "--load_config",
@@ -72,6 +72,7 @@ def main():
         env_args = all_config["env_args"]
     else:  # load config from corresponding yaml file
         algo_args, env_args = get_defaults_yaml_args(args["algo"], args["env"])
+    algo_args['train']['num_env_steps']=80000000
     update_args(unparsed_dict, algo_args, env_args)  # update args from command line
 
     if args["env"] == "dexhands":
@@ -81,7 +82,7 @@ def main():
     if args["env"] == "dexhands":
         algo_args["eval"]["use_eval"] = False
         algo_args["train"]["episode_length"] = env_args["hands_episode_length"]
-
+    
     # start training
     from harl.runners import RUNNER_REGISTRY
 
