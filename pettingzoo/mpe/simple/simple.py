@@ -99,7 +99,7 @@ class Scenario(BaseScenario):
             landmark.name = "landmark %d" % i
             landmark.collide = False
             landmark.movable = False
-            landmark.size=0.05
+            landmark.size=0.01
         for i, agent in enumerate(world.agents):
             agent.name = f"agent_{i}"
             agent.collide = True
