@@ -124,13 +124,14 @@ class Scenario(BaseScenario):
         for i, landmark in enumerate(world.landmarks):
             # Set landmark colors with a corresponding gradient
             landmark.color = np.array([0.25 + 0.15 * i, 0.25, 0.25])
-        
+        delta_pi=0
         # set random initial states
         for i, agent in enumerate(world.agents):
             # Generate random spherical coordinates
             z = np_random.uniform(-0.3, 0.3)  # height restriction
             r = np.sqrt(1 - z**2)  # radius at this height
-            phi = np_random.uniform(0, 2 * np.pi)  # azimuthal angle
+            phi = np_random.uniform(2 * np.pi/6, 2 * np.pi/4)+delta_pi  # azimuthal angle
+            delta_pi=phi
             x = r * np.cos(phi)
             y = r * np.sin(phi)
             agent.state.p_pos = np.array([x, y, z])
@@ -147,7 +148,7 @@ class Scenario(BaseScenario):
             landmark.state.p_vel = np.zeros(world.dim_p)
         for i, obstacle in enumerate(world.obstacles):
             # Place the obstacle at the center (0, 0, 0)
-            obstacle.state.p_pos = np.array([0, 0, 0])
+            obstacle.state.p_pos = np.array([np_random.uniform(0, 0.3), np_random.uniform(0, 0.3),0])
             # Place the obstacle randomly within a spherical shell of radius 10 to 20
             obstacle.size = np_random.uniform(0.2, 0.4)
     def is_collision(self, entity1, entity2, is_obstacle=False):
